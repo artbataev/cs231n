@@ -35,7 +35,8 @@ def softmax_loss_naive(W, X, y, reg):
     for i in range(num_train):
         log_c_coeff = - np.max(logits[i])
         current_logits = logits[i] - log_c_coeff
-        loss += -np.log(np.exp(current_logits[y[i]]) / np.sum(np.exp(current_logits)))
+        # loss += -np.log(np.exp(current_logits[y[i]]) / np.sum(np.exp(current_logits)))
+        loss += - (current_logits[y[i]] - np.log(np.sum(np.exp(current_logits))))
 
     loss /= num_train
 
@@ -70,7 +71,7 @@ def softmax_loss_vectorized(W, X, y, reg):
     logits = X.dot(W)
     log_c_coeff = - np.max(logits, axis=1)
     logits -= np.reshape(log_c_coeff, (-1, 1))
-    scores = -np.log(np.exp(logits[np.arange(num_train), y]) / np.sum(np.exp(logits), axis=1))
+    scores = - (logits[np.arange(num_train), y] - np.log(np.sum(np.exp(logits), axis=1)))
     loss = np.sum(scores) / num_train
 
     # dW not implemented
