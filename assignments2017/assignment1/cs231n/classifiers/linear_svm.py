@@ -84,7 +84,6 @@ def svm_loss_vectorized(W, X, y, reg):
 
 
     #############################################################################
-    # TODO:                                                                     #
     # Implement a vectorized version of the gradient for the structured SVM     #
     # loss, storing the result in dW.                                           #
     #                                                                           #
@@ -92,9 +91,10 @@ def svm_loss_vectorized(W, X, y, reg):
     # to reuse some of the intermediate values that you used to compute the     #
     # loss.                                                                     #
     #############################################################################
-    margins_bin = np.maximum(margins, 1)
+    margins_bin = (margins > 0).astype(np.int)
+    margins_bin[np.arange(y.shape[0]), y] -= np.sum(margins_bin, axis=1)
     dW = X.T.dot(margins_bin)
-    # dW = (dW.T - X.T.dot(np.sum(margins_bin, axis=1))).T
+    dW /= num_train
     dW += 2 * reg * W
     #############################################################################
     #                             END OF YOUR CODE                              #
