@@ -35,26 +35,28 @@ def softmax_loss_naive(W, X, y, reg):
     for i in range(num_train):
         current_logits = X[i].dot(W)
         # loss += -np.log(np.exp(current_logits[y[i]]) / np.sum(np.exp(current_logits)))
-        # log_c_coeff = np.max(current_logits)
-        # corrected_logits = current_logits - log_c_coeff # correction to avoid large numbers
         ###
-        logits_exp = np.exp(current_logits)
+        log_c_coeff = np.max(current_logits)
+        corrected_logits = current_logits - log_c_coeff # correction to avoid large numbers
+        logits_exp = np.exp(corrected_logits)
         sum_logits_exp = np.sum(logits_exp)
         log_sum_logits_exp = np.log(sum_logits_exp)
-        inverted_true_logit = -1 * current_logits[y[i]]
+        inverted_true_logit = -1 * corrected_logits[y[i]]
         current_loss = inverted_true_logit + log_sum_logits_exp
         ###
         loss += current_loss
 
         ###
-        d_current_logits = np.zeros_like(current_logits)
+        d_corrected_logits = np.zeros_like(current_logits)
         d_inverted_true_logit = 1.0
         d_log_sum_logits_exp = 1.0
-        d_current_logits[y[i]] += -1 * d_inverted_true_logit
+        d_corrected_logits[y[i]] += -1 * d_inverted_true_logit
         d_sum_logits_exp = d_log_sum_logits_exp * (1 / sum_logits_exp)
-        d_logits_exp = np.full_like(current_logits, d_sum_logits_exp) # distribute gradient
-        d_current_logits += d_logits_exp * logits_exp
+        d_logits_exp = np.full_like(corrected_logits, d_sum_logits_exp) # distribute gradient
+        d_corrected_logits += d_logits_exp * logits_exp
 
+        d_current_logits = d_corrected_logits
+        d_current_logits[np.argmax(current_logits)] -= np.sum(d_current_logits)
         current_dW = np.zeros_like(dW)
             # for j in range(num_features):
             #     for k in range(num_classes):
