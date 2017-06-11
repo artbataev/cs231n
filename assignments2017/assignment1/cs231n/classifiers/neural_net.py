@@ -78,7 +78,8 @@ class TwoLayerNet(object):
         #############################################################################
         layer1_mul = X.dot(W1)
         layer1_bias = layer1_mul + b1
-        layer1_activation = np.maximum(0, layer1_bias) # 1 / (1 + np.exp(-layer1_bias))
+        # layer1_activation = np.maximum(0, layer1_bias) # 1 / (1 + np.exp(-layer1_bias))
+        layer1_activation = layer1_bias
         layer2_mul = layer1_activation.dot(W2)
         layer2_bias = layer2_mul + b2
         scores = layer2_bias
@@ -133,8 +134,9 @@ class TwoLayerNet(object):
 
         grads["W2"] = layer1_activation.T.dot(d_logits)
         grads["b2"] = np.sum(d_logits, axis=0)
-        grads["W1"] = W1 # X.T.dot(grads["W2"].T) incorrect
-        grads["b1"] = np.sum(grads["W1"], axis=0)
+        d_layer1_activation = d_logits.dot(W2.T)
+        grads["W1"] = X.T.dot(d_layer1_activation)
+        grads["b1"] = np.sum(d_layer1_activation, axis=0)
 
         grads["W2"] /= N
         grads["W2"] += 2 * reg * W2
@@ -203,7 +205,10 @@ class TwoLayerNet(object):
             # using stochastic gradient descent. You'll need to use the gradients   #
             # stored in the grads dictionary defined above.                         #
             #########################################################################
-            pass
+            self.params['W1'] -= learning_rate * grads["W1"]
+            self.params['b1'] -= learning_rate * grads["b1"]
+            self.params['W2'] -= learning_rate * grads["W2"]
+            self.params['b2'] -= learning_rate * grads["b2"]
             #########################################################################
             #                             END OF YOUR CODE                          #
             #########################################################################
