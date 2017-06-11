@@ -114,8 +114,7 @@ def softmax_loss_vectorized(W, X, y, reg):
     d_corrected_logits[np.arange(num_train), y] += -1 * d_inverted_true_logits
     d_sum_logits_exp = d_log_sum_logits_exp * (1 / sum_logits_exp)
     d_logits_exp = np.zeros_like(corrected_logits)  # distribute gradient
-    for j in range(d_logits_exp.shape[1]):
-        d_logits_exp[:, j] = d_sum_logits_exp
+    d_logits_exp[:, ::1] = np.reshape(d_sum_logits_exp, (-1, 1))
     d_corrected_logits += d_logits_exp * logits_exp
 
     d_logits = d_corrected_logits
