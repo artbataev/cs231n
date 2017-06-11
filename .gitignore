@@ -101,3 +101,5 @@ ENV/
 .ropeproject
 
 /annurev.neuro.28.061604.135703.pdf
+.sync
+/Icon
