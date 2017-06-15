@@ -62,10 +62,12 @@ def sgd_momentum(w, dw, config=None):
 
     next_w = None
     ###########################################################################
-    # TODO: Implement the momentum update formula. Store the updated value in #
+    # Implement the momentum update formula. Store the updated value in       #
     # the next_w variable. You should also use and update the velocity v.     #
     ###########################################################################
-    pass
+    v = config["momentum"] * v - config["learning_rate"] * dw
+    next_w = w + v
+    config["velocity"] = v
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -95,11 +97,12 @@ def rmsprop(x, dx, config=None):
 
     next_x = None
     ###########################################################################
-    # TODO: Implement the RMSprop update formula, storing the next value of x #
+    # Implement the RMSprop update formula, storing the next value of x       #
     # in the next_x variable. Don't forget to update cache value stored in    #
     # config['cache'].                                                        #
     ###########################################################################
-    pass
+    config['cache'] = config["decay_rate"] * config["cache"] + (1 - config["decay_rate"]) * np.square(dx)
+    next_x = x - config["learning_rate"] * dx / (np.sqrt(config["cache"]) + config["epsilon"])
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -132,11 +135,17 @@ def adam(x, dx, config=None):
 
     next_x = None
     ###########################################################################
-    # TODO: Implement the Adam update formula, storing the next value of x in #
+    # Implement the Adam update formula, storing the next value of x in       #
     # the next_x variable. Don't forget to update the m, v, and t variables   #
     # stored in config.                                                       #
     ###########################################################################
-    pass
+    config["t"] += 1
+    config["m"] = config["beta1"] * config["m"] + (1 - config["beta1"]) * dx
+    config["v"] = config["beta2"] * config["v"] + (1 - config["beta2"]) * np.square(dx)
+    mb = config["m"] / (1 - config["beta1"] ** config["t"])
+    vb = config["v"] / (1 - config["beta2"] ** config["t"])
+    next_x = x - config["learning_rate"] * mb / (np.sqrt(vb) + config["epsilon"])
+
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################

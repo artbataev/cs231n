@@ -178,7 +178,11 @@ class FullyConnectedNet(object):
         # beta2, etc. Scale parameters should be initialized to one and shift      #
         # parameters should be initialized to zero.                                #
         ############################################################################
-        pass
+        prev_dim = input_dim
+        for layer_i, curr_dim in enumerate(hidden_dims + [num_classes]):
+            self.params["W{}".format(layer_i + 1)] = np.random.randn(prev_dim, curr_dim) * weight_scale
+            self.params["b{}".format(layer_i + 1)] = np.zeros(curr_dim)
+            prev_dim = curr_dim
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -236,7 +240,17 @@ class FullyConnectedNet(object):
         # self.bn_params[1] to the forward pass for the second batch normalization #
         # layer, etc.                                                              #
         ############################################################################
-        pass
+        caches = []
+        current_inputs = X
+        for i in range(1, self.num_layers + 1):
+            layer_func = affine_relu_forward
+            if i == self.num_layers:
+                layer_func = affine_forward
+            layer, cache_layer = layer_func(current_inputs, self.params["W{}".format(i)], self.params["b{}".format(i)])
+            caches.append(cache_layer)
+            current_inputs = layer
+        scores = current_inputs
+
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -259,7 +273,20 @@ class FullyConnectedNet(object):
         # automated tests, make sure that your L2 regularization includes a factor #
         # of 0.5 to simplify the expression for the gradient.                      #
         ############################################################################
-        pass
+        loss, dscores = softmax_loss(scores, y)
+        dlayer = dscores
+        for i in range(self.num_layers, 0, -1):
+            if i == self.num_layers:
+                backward_func = affine_backward
+            else:
+                backward_func = affine_relu_backward
+
+            dlayer, dw, db = backward_func(dlayer, caches[i - 1])
+            grads["W{}".format(i)] = dw
+            grads["b{}".format(i)] = db
+            grads["W{}".format(i)] += 2 * self.reg * self.params["W{}".format(i)]
+            loss += self.reg * (np.sum(np.square(self.params["W{}".format(i)])))
+
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
