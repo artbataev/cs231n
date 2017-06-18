@@ -248,6 +248,9 @@ class FullyConnectedNet(object):
                 layer_func = affine_forward
             layer, cache_layer = layer_func(current_inputs, self.params["W{}".format(i)], self.params["b{}".format(i)])
             caches.append(cache_layer)
+            if self.use_dropout and i < self.num_layers:
+                layer, cache_layer = dropout_forward(layer, self.dropout_param)
+                caches.append(cache_layer)
             current_inputs = layer
         scores = current_inputs
 
@@ -280,8 +283,9 @@ class FullyConnectedNet(object):
                 backward_func = affine_backward
             else:
                 backward_func = affine_relu_backward
-
-            dlayer, dw, db = backward_func(dlayer, caches[i - 1])
+                if self.use_dropout:
+                    dlayer = dropout_backward(dlayer, caches.pop())
+            dlayer, dw, db = backward_func(dlayer, caches.pop())
             grads["W{}".format(i)] = dw
             grads["b{}".format(i)] = db
             grads["W{}".format(i)] += 2 * self.reg * self.params["W{}".format(i)]

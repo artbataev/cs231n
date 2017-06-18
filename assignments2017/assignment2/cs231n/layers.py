@@ -171,18 +171,30 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         # variance, storing your result in the running_mean and running_var   #
         # variables.                                                          #
         #######################################################################
-        pass
+        sample_mean = np.sum(x, axis=0) / N
+        sample_var2 = np.sum(np.square(x - sample_mean), axis=0) / N
+        sample_var = np.sqrt(sample_var2)
+        x_shifted = x - sample_mean
+        inverted_var = 1 / (sample_var + eps)
+        x_transformed = x_shifted * inverted_var
+        out_scaled = x_transformed * gamma
+        out = out_scaled + beta
+        cache = (sample_mean, sample_var2, sample_var, x_shifted, inverted_var, x_transformed, gamma)
+
+        running_mean = momentum * running_mean + (1 - momentum) * sample_mean
+        running_var = momentum * running_var + (1 - momentum) * sample_var
         #######################################################################
         #                           END OF YOUR CODE                          #
         #######################################################################
     elif mode == 'test':
         #######################################################################
-        # TODO: Implement the test-time forward pass for batch normalization. #
+        # Implement the test-time forward pass for batch normalization.       #
         # Use the running mean and variance to normalize the incoming data,   #
         # then scale and shift the normalized data using gamma and beta.      #
         # Store the result in the out variable.                               #
         #######################################################################
-        pass
+        x_transformed = (x - running_mean) / (running_var + eps)
+        out = x_transformed * gamma + beta
         #######################################################################
         #                          END OF YOUR CODE                           #
         #######################################################################
@@ -218,10 +230,32 @@ def batchnorm_backward(dout, cache):
     # TODO: Implement the backward pass for batch normalization. Store the    #
     # results in the dx, dgamma, and dbeta variables.                         #
     ###########################################################################
-    pass
+    # dout: N x D, x: N x D
+    sample_mean, sample_var2, sample_var, x_shifted, inverted_var, x_transformed, gamma = cache
+    N, D = dout.shape
+
+    dbeta = np.sum(dout, axis=0)
+    dgamma = np.sum(x_transformed * dout, axis=0)
+    dx_transformed = dout * gamma
+    dx_shifted = dx_transformed * inverted_var
+    dinverted_var = np.sum(dx_transformed * x_shifted, axis=0)
+    dsample_var = -1 / np.square(sample_var) * dinverted_var
+    dx = dx_shifted
+    dsample_mean = -np.sum(dx_shifted, axis=0)
+    dsample_var2 = 1/2 * 1 / np.sqrt(sample_var2) * dsample_var
+
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
+    # sample_mean = np.sum(x, axis=0) / N
+    # sample_var2 = np.sum(np.square(x - sample_mean), axis=0) / N
+    # sample_var = np.sqrt(sample_var2)
+    # x_shifted = x - sample_mean
+    # inverted_var = 1 / (sample_var + eps)
+    # x_transformed = x_shifted * inverted_var
+    # out_scaled = x_transformed * gamma
+    # out = out_scaled + beta
+    # cache = (sample_mean, sample_var, x_shifted, inverted_var, x_transformed, gamma)
 
     return dx, dgamma, dbeta
 
@@ -284,18 +318,24 @@ def dropout_forward(x, dropout_param):
 
     if mode == 'train':
         #######################################################################
-        # TODO: Implement training phase forward pass for inverted dropout.   #
+        # Implement training phase forward pass for inverted dropout.         #
         # Store the dropout mask in the mask variable.                        #
         #######################################################################
-        pass
+        # http://cs231n.github.io/neural-networks-2/ - we keep neuron with
+        # probability p, but here we drop neuron with probability p ???
+        if p > 0:
+            mask = np.random.rand(*x.shape) > p
+            out = (x * mask) / (1 - p)
+        else: # p == 0
+            out = x
         #######################################################################
         #                           END OF YOUR CODE                          #
         #######################################################################
     elif mode == 'test':
         #######################################################################
-        # TODO: Implement the test phase forward pass for inverted dropout.   #
+        # Implement the test phase forward pass for inverted dropout.         #
         #######################################################################
-        pass
+        out = x
         #######################################################################
         #                            END OF YOUR CODE                         #
         #######################################################################
@@ -320,9 +360,9 @@ def dropout_backward(dout, cache):
     dx = None
     if mode == 'train':
         #######################################################################
-        # TODO: Implement training phase backward pass for inverted dropout   #
+        # Implement training phase backward pass for inverted dropout         #
         #######################################################################
-        pass
+        dx = (dout * mask) / (1 - dropout_param["p"])
         #######################################################################
         #                          END OF YOUR CODE                           #
         #######################################################################
