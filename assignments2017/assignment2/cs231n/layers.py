@@ -172,14 +172,15 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         # variables.                                                          #
         #######################################################################
         sample_mean = np.sum(x, axis=0) / N
-        sample_var2 = np.sum(np.square(x - sample_mean), axis=0) / N
-        sample_var = np.sqrt(sample_var2)
         x_shifted = x - sample_mean
-        inverted_var = 1 / (sample_var + eps)
+        x_minus_sample_mean_squares = x_shifted ** 2
+        sample_var2 = 1 / N * np.sum(x_minus_sample_mean_squares, axis=0)
+        sample_var = np.sqrt(sample_var2 + eps)
+        inverted_var = 1 / sample_var
         x_transformed = x_shifted * inverted_var
         out_scaled = x_transformed * gamma
         out = out_scaled + beta
-        cache = (sample_mean, sample_var2, sample_var, x_shifted, inverted_var, x_transformed, gamma)
+        cache = sample_var2, sample_var, x_shifted, inverted_var, x_transformed, gamma, eps
 
         running_mean = momentum * running_mean + (1 - momentum) * sample_mean
         running_var = momentum * running_var + (1 - momentum) * sample_var
@@ -231,31 +232,37 @@ def batchnorm_backward(dout, cache):
     # results in the dx, dgamma, and dbeta variables.                         #
     ###########################################################################
     # dout: N x D, x: N x D
-    sample_mean, sample_var2, sample_var, x_shifted, inverted_var, x_transformed, gamma = cache
+    sample_var2, sample_var, x_shifted, inverted_var, x_transformed, gamma, eps = cache
     N, D = dout.shape
 
     dbeta = np.sum(dout, axis=0)
     dgamma = np.sum(x_transformed * dout, axis=0)
     dx_transformed = dout * gamma
-    dx_shifted = dx_transformed * inverted_var
     dinverted_var = np.sum(dx_transformed * x_shifted, axis=0)
-    dsample_var = -1 / np.square(sample_var) * dinverted_var
+    dx_shifted = dx_transformed * inverted_var
+    dsample_var = -1 / sample_var2 * dinverted_var
+    dsample_var2 = 0.5 / np.sqrt(sample_var2 + eps) * dsample_var
+    dx_minus_sample_mean_squares = 1 / N * dsample_var2 * np.ones_like(dout)
+    dx_shifted += 2 * x_shifted * dx_minus_sample_mean_squares
+    dsample_mean = -1 * np.sum(dx_shifted, axis=0)
     dx = dx_shifted
-    dsample_mean = -np.sum(dx_shifted, axis=0)
-    dsample_var2 = 1/2 * 1 / np.sqrt(sample_var2) * dsample_var
+    dx = dx + 1 / N * dsample_mean
+
+    #####################################
+    # sample_mean = np.sum(x, axis=0) / N
+    # x_shifted = x - sample_mean
+    # x_minus_sample_mean_squares = x_shifted ** 2
+    # sample_var2 = 1 / N * np.sum(x_minus_sample_mean_squares, axis=0)
+    # sample_var = np.sqrt(sample_var2 + eps)
+    # inverted_var = 1 / sample_var
+    # x_transformed = x_shifted * inverted_var
+    # out_scaled = x_transformed * gamma
+    # out = out_scaled + beta
+    #####################################
 
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
-    # sample_mean = np.sum(x, axis=0) / N
-    # sample_var2 = np.sum(np.square(x - sample_mean), axis=0) / N
-    # sample_var = np.sqrt(sample_var2)
-    # x_shifted = x - sample_mean
-    # inverted_var = 1 / (sample_var + eps)
-    # x_transformed = x_shifted * inverted_var
-    # out_scaled = x_transformed * gamma
-    # out = out_scaled + beta
-    # cache = (sample_mean, sample_var, x_shifted, inverted_var, x_transformed, gamma)
 
     return dx, dgamma, dbeta
 
