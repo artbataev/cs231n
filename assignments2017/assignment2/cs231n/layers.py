@@ -157,7 +157,7 @@ def batchnorm_forward(x, gamma, beta, bn_param):
     out, cache = None, None
     if mode == 'train':
         #######################################################################
-        # TODO: Implement the training-time forward pass for batch norm.      #
+        # Implement the training-time forward pass for batch norm.            #
         # Use minibatch statistics to compute the mean and variance, use      #
         # these statistics to normalize the incoming data, and scale and      #
         # shift the normalized data using gamma and beta.                     #
@@ -173,8 +173,8 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         #######################################################################
         sample_mean = np.sum(x, axis=0) / N
         x_shifted = x - sample_mean
-        x_minus_sample_mean_squares = x_shifted ** 2
-        sample_var2 = 1 / N * np.sum(x_minus_sample_mean_squares, axis=0)
+        x_minus_sample_mean_squares = np.square(x_shifted)
+        sample_var2 = np.sum(x_minus_sample_mean_squares, axis=0) / N
         sample_var = np.sqrt(sample_var2 + eps)
         inverted_var = 1 / sample_var
         x_transformed = x_shifted * inverted_var
@@ -228,7 +228,7 @@ def batchnorm_backward(dout, cache):
     """
     dx, dgamma, dbeta = None, None, None
     ###########################################################################
-    # TODO: Implement the backward pass for batch normalization. Store the    #
+    # Implement the backward pass for batch normalization. Store the          #
     # results in the dx, dgamma, and dbeta variables.                         #
     ###########################################################################
     # dout: N x D, x: N x D
@@ -240,13 +240,13 @@ def batchnorm_backward(dout, cache):
     dx_transformed = dout * gamma
     dinverted_var = np.sum(dx_transformed * x_shifted, axis=0)
     dx_shifted = dx_transformed * inverted_var
-    dsample_var = -1 / sample_var2 * dinverted_var
-    dsample_var2 = 0.5 / np.sqrt(sample_var2 + eps) * dsample_var
-    dx_minus_sample_mean_squares = 1 / N * dsample_var2 * np.ones_like(dout)
+    dsample_var = - dinverted_var / np.square(sample_var)
+    dsample_var2 = 0.5 * dsample_var / np.sqrt(sample_var2 + eps)
+    dx_minus_sample_mean_squares = dsample_var2 / N * np.ones_like(dout)
     dx_shifted += 2 * x_shifted * dx_minus_sample_mean_squares
     dsample_mean = -1 * np.sum(dx_shifted, axis=0)
     dx = dx_shifted
-    dx = dx + 1 / N * dsample_mean
+    dx = dx + dsample_mean / N
 
     #####################################
     # sample_mean = np.sum(x, axis=0) / N
@@ -254,7 +254,7 @@ def batchnorm_backward(dout, cache):
     # x_minus_sample_mean_squares = x_shifted ** 2
     # sample_var2 = 1 / N * np.sum(x_minus_sample_mean_squares, axis=0)
     # sample_var = np.sqrt(sample_var2 + eps)
-    # inverted_var = 1 / sample_var
+    # inverted_var = 1 / (sample_var)
     # x_transformed = x_shifted * inverted_var
     # out_scaled = x_transformed * gamma
     # out = out_scaled + beta

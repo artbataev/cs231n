@@ -6,6 +6,37 @@ from cs231n.layers import *
 from cs231n.layer_utils import *
 
 
+def affine_relu_batchnorm_forward(x, w, b, gamma, beta, bn_param):
+    """
+    Convenience layer that perorms an affine transform followed by batch normalization and ReLU
+
+    Inputs:
+    - x: Input to the affine layer
+    - w, b: Weights for the affine layer
+    - gamma, beta, bn_param: batch norm params
+
+    Returns a tuple of:
+    - out: Output from the ReLU
+    - cache: Object to give to the backward pass
+    """
+    a, fc_cache = affine_forward(x, w, b)
+    bn, bn_cache = batchnorm_forward(a, gamma, beta, bn_param)
+    out, relu_cache = relu_forward(bn)
+    cache = (fc_cache, bn_cache, relu_cache)
+    return out, cache
+
+
+def affine_relu_batchnorm_backward(dout, cache):
+    """
+    Backward pass for the affine-relu-batchnorm convenience layer
+    """
+    fc_cache, bn_cache, relu_cache = cache
+    da = relu_backward(dout, relu_cache)
+    dbn, dgamma, dbeta = batchnorm_backward(da, bn_cache)
+    dx, dw, db = affine_backward(dbn, fc_cache)
+    return dx, dw, db, dgamma, dbeta
+
+
 class TwoLayerNet(object):
     """
     A two-layer fully-connected neural network with ReLU nonlinearity and
@@ -182,6 +213,9 @@ class FullyConnectedNet(object):
         for layer_i, curr_dim in enumerate(hidden_dims + [num_classes]):
             self.params["W{}".format(layer_i + 1)] = np.random.randn(prev_dim, curr_dim) * weight_scale
             self.params["b{}".format(layer_i + 1)] = np.zeros(curr_dim)
+            if use_batchnorm and layer_i < len(hidden_dims):
+                self.params["gamma{}".format(layer_i + 1)] = np.ones(curr_dim)
+                self.params["beta{}".format(layer_i + 1)] = np.zeros(curr_dim)
             prev_dim = curr_dim
         ############################################################################
         #                             END OF YOUR CODE                             #
@@ -243,11 +277,23 @@ class FullyConnectedNet(object):
         caches = []
         current_inputs = X
         for i in range(1, self.num_layers + 1):
-            layer_func = affine_relu_forward
             if i == self.num_layers:
-                layer_func = affine_forward
-            layer, cache_layer = layer_func(current_inputs, self.params["W{}".format(i)], self.params["b{}".format(i)])
+                layer, cache_layer = affine_forward(current_inputs, self.params["W{}".format(i)],
+                                                self.params["b{}".format(i)])
+            else:
+                if not self.use_batchnorm:
+                    layer, cache_layer = affine_relu_forward(current_inputs,
+                                                         self.params["W{}".format(i)],
+                                                         self.params["b{}".format(i)])
+                else:
+                    layer, cache_layer = affine_relu_batchnorm_forward(current_inputs,
+                                                         self.params["W{}".format(i)],
+                                                         self.params["b{}".format(i)],
+                                                         self.params["gamma{}".format(i)],
+                                                         self.params["beta{}".format(i)],
+                                                         self.bn_params[i - 1])
             caches.append(cache_layer)
+
             if self.use_dropout and i < self.num_layers:
                 layer, cache_layer = dropout_forward(layer, self.dropout_param)
                 caches.append(cache_layer)
@@ -280,12 +326,17 @@ class FullyConnectedNet(object):
         dlayer = dscores
         for i in range(self.num_layers, 0, -1):
             if i == self.num_layers:
-                backward_func = affine_backward
+                dlayer, dw, db = affine_backward(dlayer, caches.pop())
             else:
-                backward_func = affine_relu_backward
                 if self.use_dropout:
                     dlayer = dropout_backward(dlayer, caches.pop())
-            dlayer, dw, db = backward_func(dlayer, caches.pop())
+
+                if self.use_batchnorm and i < self.num_layers:
+                    dlayer, dw, db, dgamma, dbeta = affine_relu_batchnorm_backward(dlayer, caches.pop())
+                    grads["gamma{}".format(i)] = dgamma
+                    grads["beta{}".format(i)] = dbeta
+                else:
+                    dlayer, dw, db = affine_relu_backward(dlayer, caches.pop())
             grads["W{}".format(i)] = dw
             grads["b{}".format(i)] = db
             grads["W{}".format(i)] += 2 * self.reg * self.params["W{}".format(i)]
