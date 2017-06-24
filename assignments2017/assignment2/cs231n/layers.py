@@ -403,7 +403,7 @@ def conv_forward_naive(x, w, b, conv_param):
     """
     out = None
     ###########################################################################
-    # Implement the convolutional forward pass.                         #
+    # Implement the convolutional forward pass.                               #
     # Hint: you can use the function np.pad for padding.                      #
     ###########################################################################
     pad = conv_param["pad"]
@@ -443,7 +443,7 @@ def conv_backward_naive(dout, cache):
     """
     dx, dw, db = None, None, None
     ###########################################################################
-    # TODO: Implement the convolutional backward pass.                        #
+    # Implement the convolutional backward pass.                              #
     ###########################################################################
     # dout: Output data, of shape (N, F, H', W')
     # x: Input data of shape (N, C, H, W)
@@ -458,11 +458,10 @@ def conv_backward_naive(dout, cache):
     db = np.sum(dout, axis=(0, 2, 3))
 
     for f in range(num_filters):
-        for item in range(N):
-            for i in range(0, input_width + pad * 2 - filter_width + 1, stride):
-                for j in range(0, input_height + pad * 2 - filter_height + 1, stride):
-                    dw[f] += dout[item, f, i // stride, j // stride ] * x_padded[item, :, i: i + filter_width, j: j + filter_height]
-                    dx_padded[item, :, i: i + filter_width, j: j + filter_height] += w[f] * dout[item, f, i // stride, j // stride ]
+        for i in range(0, input_width + pad * 2 - filter_width + 1, stride):
+            for j in range(0, input_height + pad * 2 - filter_height + 1, stride):
+                dw[f] += np.sum(dout[:, f, i // stride, j // stride ][:, np.newaxis, np.newaxis, np.newaxis] * x_padded[:, :, i: i + filter_width, j: j + filter_height], axis=0)
+                dx_padded[:, :, i: i + filter_width, j: j + filter_height] += w[f] * dout[:, f, i // stride, j // stride ][:, np.newaxis, np.newaxis, np.newaxis]
     dx = dx_padded[:, :, pad: -pad, pad: -pad]
     ###########################################################################
     #                             END OF YOUR CODE                            #
