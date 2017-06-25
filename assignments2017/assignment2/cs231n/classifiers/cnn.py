@@ -39,7 +39,7 @@ class ThreeLayerConvNet(object):
         self.dtype = dtype
 
         ############################################################################
-        # TODO: Initialize weights and biases for the three-layer convolutional    #
+        # Initialize weights and biases for the three-layer convolutional          #
         # network. Weights should be initialized from a Gaussian with standard     #
         # deviation equal to weight_scale; biases should be initialized to zero.   #
         # All weights and biases should be stored in the dictionary self.params.   #
@@ -48,7 +48,14 @@ class ThreeLayerConvNet(object):
         # hidden affine layer, and keys 'W3' and 'b3' for the weights and biases   #
         # of the output affine layer.                                              #
         ############################################################################
-        pass
+        num_channels, height, width = input_dim
+        self.params["W1"] = np.random.randn(num_filters, num_channels, filter_size, filter_size) * weight_scale
+        self.params["b1"] = np.zeros(num_filters)
+        c_reshaped = num_filters * (height // 2) * (width // 2) # pad = (filter_size - 1) // 2 (same), stride=1, maxpool stride = 2
+        self.params["W2"] = np.random.randn(c_reshaped, hidden_dim) * weight_scale
+        self.params["b2"] = np.zeros(hidden_dim)
+        self.params["W3"] = np.random.randn(hidden_dim, num_classes) * weight_scale
+        self.params['b3'] = np.zeros(num_classes)
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -76,11 +83,15 @@ class ThreeLayerConvNet(object):
 
         scores = None
         ############################################################################
-        # TODO: Implement the forward pass for the three-layer convolutional net,  #
+        # Implement the forward pass for the three-layer convolutional net,        #
         # computing the class scores for X and storing them in the scores          #
         # variable.                                                                #
         ############################################################################
-        pass
+        layer1, cache1, = conv_relu_pool_forward(X, W1, b1, conv_param, pool_param)
+        layer1_reshaped = np.reshape(layer1, (X.shape[0], -1))
+        layer2, cache2 = affine_relu_forward(layer1_reshaped, W2, b2)
+        layer3, cache3 = affine_forward(layer2, W3, b3)
+        scores = layer3
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -90,12 +101,22 @@ class ThreeLayerConvNet(object):
 
         loss, grads = 0, {}
         ############################################################################
-        # TODO: Implement the backward pass for the three-layer convolutional net, #
+        # Implement the backward pass for the three-layer convolutional net,       #
         # storing the loss and gradients in the loss and grads variables. Compute  #
         # data loss using softmax, and make sure that grads[k] holds the gradients #
         # for self.params[k]. Don't forget to add L2 regularization!               #
         ############################################################################
-        pass
+        loss, dlayer3 = softmax_loss(layer3, y)
+        dlayer2, grads["W3"], grads["b3"] = affine_backward(dlayer3, cache3)
+        dlayer1_reshaped, grads["W2"], grads["b2"] = affine_relu_backward(dlayer2, cache2)
+        dlayer1 = np.reshape(dlayer1_reshaped, layer1.shape)
+        _, grads["W1"], grads["b1"] = conv_relu_pool_backward(dlayer1, cache1)
+
+        loss += self.reg * (np.sum(np.square(W1)) + np.sum(np.square(W2)) + np.sum(np.square(W3)))
+        grads["W3"] += 2 * self.reg * W3
+        grads["W2"] += 2 * self.reg * W2
+        grads["W1"] += 2 * self.reg * W1
+
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################

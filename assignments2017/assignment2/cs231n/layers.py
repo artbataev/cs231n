@@ -486,9 +486,18 @@ def max_pool_forward_naive(x, pool_param):
     """
     out = None
     ###########################################################################
-    # TODO: Implement the max pooling forward pass                            #
+    # Implement the max pooling forward pass                                  #
     ###########################################################################
-    pass
+    pool_height = pool_param["pool_height"]
+    pool_width = pool_param["pool_width"]
+    stride = pool_param["stride"]
+    N, num_channels, input_height, input_width = x.shape
+    out_height = (input_height - pool_height) // stride + 1
+    out_width = (input_width - pool_width) // stride + 1
+    out = np.zeros([N, num_channels, out_height, out_width])
+    for i in range(0, input_height, stride):
+        for j in range(0, input_width, stride):
+            out[:, :, i // stride, j // stride] = np.max(x[:, :, i: i+stride, j: j+stride], axis=(2, 3))
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -509,9 +518,21 @@ def max_pool_backward_naive(dout, cache):
     """
     dx = None
     ###########################################################################
-    # TODO: Implement the max pooling backward pass                           #
+    # Implement the max pooling backward pass                                 #
     ###########################################################################
-    pass
+    x, pool_param = cache
+    pool_height = pool_param["pool_height"]
+    pool_width = pool_param["pool_width"]
+    stride = pool_param["stride"]
+    N, num_channels, input_height, input_width = x.shape
+
+    dx = np.zeros_like(x)
+    for item in range(N):
+        for c in range(num_channels):
+            for i in range(0, input_height, stride):
+                for j in range(0, input_width, stride):
+                    max_el = np.argmax(x[item, c, i: i + pool_height, j: j + pool_width])
+                    dx[item, c, i + max_el // pool_width, j + max_el % pool_width] += dout[item, c, i // stride, j // stride]
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -543,13 +564,17 @@ def spatial_batchnorm_forward(x, gamma, beta, bn_param):
     out, cache = None, None
 
     ###########################################################################
-    # TODO: Implement the forward pass for spatial batch normalization.       #
+    # Implement the forward pass for spatial batch normalization.             #
     #                                                                         #
     # HINT: You can implement spatial batch normalization using the vanilla   #
     # version of batch normalization defined above. Your implementation should#
     # be very short; ours is less than five lines.                            #
     ###########################################################################
-    pass
+    N, num_channels, H, W = x.shape
+    all_batchnorm = [batchnorm_forward(x[:, c, :, :].reshape(N, -1), gamma[c], beta[c], bn_param) for c in range(num_channels)]
+    out_trans = np.array([x[0] for x in all_batchnorm])
+    cache = [x[1] for x in all_batchnorm]
+    out = np.reshape(out_trans.transpose([1, 0, 2]), x.shape)
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -573,13 +598,18 @@ def spatial_batchnorm_backward(dout, cache):
     dx, dgamma, dbeta = None, None, None
 
     ###########################################################################
-    # TODO: Implement the backward pass for spatial batch normalization.      #
+    # Implement the backward pass for spatial batch normalization.            #
     #                                                                         #
     # HINT: You can implement spatial batch normalization using the vanilla   #
     # version of batch normalization defined above. Your implementation should#
     # be very short; ours is less than five lines.                            #
     ###########################################################################
-    pass
+    N, num_channels, H, W = dout.shape
+    all_backwards_batchnorm = [batchnorm_backward(dout[:, c, :, :].reshape([N, -1]), cache[c]) for c in range(num_channels)]
+    dx_transformed = np.array([x[0] for x in all_backwards_batchnorm])
+    dgamma = np.array([np.sum(x[1]) for x in all_backwards_batchnorm])
+    dbeta = np.array([np.sum(x[2]) for x in all_backwards_batchnorm])
+    dx = np.reshape(dx_transformed.transpose([1, 0, 2]), dout.shape)
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
