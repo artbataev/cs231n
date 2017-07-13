@@ -117,7 +117,7 @@ class CaptioningRNN(object):
 
         loss, grads = 0.0, {}
         ############################################################################
-        # TODO: Implement the forward and backward passes for the CaptioningRNN.   #
+        # Implement the forward and backward passes for the CaptioningRNN.         #
         # In the forward pass you will need to do the following:                   #
         # (1) Use an affine transformation to compute the initial hidden state     #
         #     from the image features. This should produce an array of shape (N, H)#
@@ -148,7 +148,13 @@ class CaptioningRNN(object):
             dall_h, grads["W_vocab"], grads["b_vocab"] = temporal_affine_backward(dscores, cache_affine_scores)
             din_words, dh0, grads["Wx"], grads["Wh"], grads["b"] = rnn_backward(dall_h, cache_rnn)
         elif self.cell_type == "lstm":
-            raise NotImplementedError
+            all_h, cache_rnn = lstm_forward(in_words, h0, Wx, Wh, b)
+            scores, cache_affine_scores = temporal_affine_forward(all_h, W_vocab, b_vocab)
+            loss, dscores = temporal_softmax_loss(scores, captions_out, mask)
+
+            # backward pass
+            dall_h, grads["W_vocab"], grads["b_vocab"] = temporal_affine_backward(dscores, cache_affine_scores)
+            din_words, dh0, grads["Wx"], grads["Wh"], grads["b"] = lstm_backward(dall_h, cache_rnn)
         else:
             raise ValueError("invalid cell type")
         grads["W_embed"] = word_embedding_backward(din_words, cache_w_embedding)
@@ -215,13 +221,14 @@ class CaptioningRNN(object):
         # a loop.                                                                 #
         ###########################################################################
         current_h, _ = affine_forward(features, W_proj, b_proj)
+        current_c = np.zeros_like(current_h) # for lstm
         current_input_words = self._start * np.ones((N,), dtype=np.int32)
         for i in range(max_length):
             current_input_words_embed, _ = word_embedding_forward(current_input_words, W_embed)
             if self.cell_type == "rnn":
                 current_h, _ = rnn_step_forward(current_input_words_embed, current_h, Wx, Wh, b)
             elif self.cell_type == "lstm":
-                raise NotImplementedError
+                current_h, current_c, _ = lstm_step_forward(current_input_words_embed, current_h, current_c, Wx, Wh, b)
             else:
                 raise ValueError("incorrect cell type")
             words_scores, _ = affine_forward(current_h, W_vocab, b_vocab)
