@@ -137,7 +137,22 @@ class CaptioningRNN(object):
         # defined above to store loss and gradients; grads[k] should give the      #
         # gradients for self.params[k].                                            #
         ############################################################################
-        pass
+        h0, cache_affine_h0 = affine_forward(features, W_proj, b_proj)
+        in_words, cache_w_embedding = word_embedding_forward(captions_in, W_embed)
+        if self.cell_type == "rnn":
+            all_h, cache_rnn = rnn_forward(in_words, h0, Wx, Wh, b)
+            scores, cache_affine_scores = temporal_affine_forward(all_h, W_vocab, b_vocab)
+            loss, dscores = temporal_softmax_loss(scores, captions_out, mask)
+
+            # backward pass
+            dall_h, grads["W_vocab"], grads["b_vocab"] = temporal_affine_backward(dscores, cache_affine_scores)
+            din_words, dh0, grads["Wx"], grads["Wh"], grads["b"] = rnn_backward(dall_h, cache_rnn)
+        elif self.cell_type == "lstm":
+            raise NotImplementedError
+        else:
+            raise ValueError("invalid cell type")
+        grads["W_embed"] = word_embedding_backward(din_words, cache_w_embedding)
+        _, grads["W_proj"], grads["b_proj"] = affine_backward(dh0, cache_affine_h0)
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -199,7 +214,19 @@ class CaptioningRNN(object):
         # functions; you'll need to call rnn_step_forward or lstm_step_forward in #
         # a loop.                                                                 #
         ###########################################################################
-        pass
+        current_h, _ = affine_forward(features, W_proj, b_proj)
+        current_input_words = self._start * np.ones((N,), dtype=np.int32)
+        for i in range(max_length):
+            current_input_words_embed, _ = word_embedding_forward(current_input_words, W_embed)
+            if self.cell_type == "rnn":
+                current_h, _ = rnn_step_forward(current_input_words_embed, current_h, Wx, Wh, b)
+            elif self.cell_type == "lstm":
+                raise NotImplementedError
+            else:
+                raise ValueError("incorrect cell type")
+            words_scores, _ = affine_forward(current_h, W_vocab, b_vocab)
+            words = np.argmax(words_scores, axis=1)
+            captions[:, i] = words
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
