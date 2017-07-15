@@ -4,3 +4,4 @@
 cs231n/datasets/coco_captioning
 cs231n/datasets/imagenet*
 cs231n/datasets/squeezenet*
+.~*
