@@ -200,7 +200,7 @@ class CaptioningRNN(object):
         W_vocab, b_vocab = self.params['W_vocab'], self.params['b_vocab']
 
         ###########################################################################
-        # TODO: Implement test-time sampling for the model. You will need to      #
+        # Implement test-time sampling for the model. You will need to            #
         # initialize the hidden state of the RNN by applying the learned affine   #
         # transform to the input image features. The first word that you feed to  #
         # the RNN should be the <START> token; its value is stored in the         #
@@ -233,6 +233,7 @@ class CaptioningRNN(object):
                 raise ValueError("incorrect cell type")
             words_scores, _ = affine_forward(current_h, W_vocab, b_vocab)
             words = np.argmax(words_scores, axis=1)
+            current_input_words = words
             captions[:, i] = words
         ############################################################################
         #                             END OF YOUR CODE                             #
