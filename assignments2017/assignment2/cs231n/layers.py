@@ -282,7 +282,7 @@ def batchnorm_backward_alt(dout, cache):
     """
     dx, dgamma, dbeta = None, None, None
     ###########################################################################
-    # TODO: Implement the backward pass for batch normalization. Store the    #
+    # Implement the backward pass for batch normalization. Store the          #
     # results in the dx, dgamma, and dbeta variables.                         #
     #                                                                         #
     # After computing the gradient with respect to the centered inputs, you   #
@@ -290,13 +290,19 @@ def batchnorm_backward_alt(dout, cache):
     # single statement; our implementation fits on a single 80-character line.#
     ###########################################################################
     sample_var2, sample_var, x_shifted, inverted_var, x_transformed, gamma, eps = cache
-    N, D = dout.shape
 
     dbeta = np.sum(dout, axis=0)
     dgamma = np.sum(x_transformed * dout, axis=0)
-    dx_transformed = dout * gamma
-    dx = (dx_transformed - np.mean(dx_transformed * x_shifted, axis=0) * inverted_var ** 2 * x_shifted).T.dot(
-        np.eye(N) - np.ones([N, N]) / N).T * inverted_var
+    # working, variant 1, 35-46% faster
+    dx_shifted = gamma * inverted_var * (dout - x_transformed * (inverted_var * np.mean(dout * x_shifted, axis=0)))
+    dx = dx_shifted - np.mean(dx_shifted, axis=0)
+
+    # working, variant 2, ~20% faster
+    # dx = gamma * inverted_var * \
+    #      (dout - np.mean(dout, axis=0) -
+    #       x_transformed * np.mean(dout * x_transformed, axis=0) +
+    #       np.mean(x_transformed * np.mean(dout * x_transformed, axis=0), axis=0))
+
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
